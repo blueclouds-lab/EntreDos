@@ -94,19 +94,48 @@ if(saved.A&&Number.isFinite(saved.A.lat)&&Number.isFinite(saved.A.lng))setPoint(
   try {
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
+    const anonymousButton = document.createElement('button');
+anonymousButton.type = 'button';
+anonymousButton.textContent = 'Entrar sin correo';
+anonymousButton.style.margin = '8px 0';
+anonymousButton.style.padding = '12px 18px';
+anonymousButton.style.borderRadius = '12px';
+anonymousButton.style.border = '1px solid #9cc9ef';
+anonymousButton.style.background = '#eaf5ff';
+anonymousButton.style.color = '#174a75';
+anonymousButton.style.cursor = 'pointer';
+
+const loginButton = document.getElementById('loginBtn');
+if (loginButton) {
+  loginButton.insertAdjacentElement('afterend', anonymousButton);
+}
+
+anonymousButton.addEventListener('click', async () => {
+  anonymousButton.disabled = true;
+  try {
+    await auth.signInAnonymously();
+  } catch (error) {
+    setAuthStatus('No se pudo acceder sin correo. Comprueba la conexión e inténtalo de nuevo.');
+    console.error(error);
+  } finally {
+    anonymousButton.disabled = false;
+  }
+});
     const email = () => emailInput.value.trim();
     const password = () => passwordInput.value;
     const updateAccess = (user) => {
-      const verified = !!(user && user.emailVerified);
-      appContent.classList.toggle('locked', !verified);
-      if (!user) {
-        setAuthStatus('No has iniciado sesión. Crea una cuenta o inicia sesión.');
-      } else if (!verified) {
-        setAuthStatus('Sesión iniciada, pero el correo aún no está verificado. Pulsa «Enviar verificación» y revisa tu bandeja de entrada y spam.');
-      } else {
-        setAuthStatus('Correo verificado. Puedes probar el mapa en este navegador. La sincronización entre móviles sigue desactivada.');
-      }
-    };
+      appContent.classList.toggle('locked', !allowed);
+
+  if (!user) {
+    setAuthStatus('No has iniciado sesión. Crea una cuenta o inicia sesión.');
+  } else if (anonymous) {
+    setAuthStatus('Acceso anónimo correcto. La vinculación y sincronización entre móviles todavía no están activadas.');
+  } else if (!verified) {
+    setAuthStatus('Sesión iniciada, pero el correo aún no está verificado. Pulsa «Enviar verificación» y revisa tu bandeja de entrada y spam.');
+  } else {
+    setAuthStatus('Correo verificado. Puedes probar el mapa en este navegador. La sincronización entre móviles sigue desactivada.');
+  }
+};
 
     document.getElementById('registerBtn').addEventListener('click', async () => {
       if (!email() || password().length < 6) {
