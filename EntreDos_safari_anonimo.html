@@ -112,7 +112,7 @@ if (!user) {
 } else {
   setAuthStatus('Correo verificado. Puedes probar el mapa en este navegador. La sincronización entre móviles sigue desactivada.');
 }
-
+  };
     document.getElementById('registerBtn').addEventListener('click', async () => {
       if (!email() || password().length < 6) {
         setAuthStatus('Introduce un correo válido y una contraseña de al menos 6 caracteres.');
