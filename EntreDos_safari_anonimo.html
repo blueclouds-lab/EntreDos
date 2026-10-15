@@ -96,18 +96,22 @@ if(saved.A&&Number.isFinite(saved.A.lat)&&Number.isFinite(saved.A.lng))setPoint(
     const auth = firebase.auth();
     const email = () => emailInput.value.trim();
     const password = () => passwordInput.value;
-    appContent.classList.toggle('locked', !allowed);
+    const updateAccess = (user) => {
+const verified = !!(user && user.emailVerified);
+const anonymous = !!(user && user.isAnonymous);
+const allowed = verified || anonymous;
 
-  if (!user) {
-    setAuthStatus('No has iniciado sesión. Crea una cuenta o inicia sesión.');
-  } else if (anonymous) {
-    setAuthStatus('Acceso anónimo correcto. La vinculación y sincronización entre móviles todavía no están activadas.');
-  } else if (!verified) {
-    setAuthStatus('Sesión iniciada, pero el correo aún no está verificado. Pulsa «Enviar verificación» y revisa tu bandeja de entrada y spam.');
-  } else {
-    setAuthStatus('Correo verificado. Puedes probar el mapa en este navegador. La sincronización entre móviles sigue desactivada.');
-  }
-};
+appContent.classList.toggle('locked', !allowed);
+
+if (!user) {
+  setAuthStatus('No has iniciado sesión. Crea una cuenta o inicia sesión.');
+} else if (anonymous) {
+  setAuthStatus('Acceso anónimo correcto. La vinculación y sincronización entre móviles todavía no están activadas.');
+} else if (!verified) {
+  setAuthStatus('Sesión iniciada, pero el correo aún no está verificado. Pulsa «Enviar verificación» y revisa tu bandeja de entrada y spam.');
+} else {
+  setAuthStatus('Correo verificado. Puedes probar el mapa en este navegador. La sincronización entre móviles sigue desactivada.');
+}
 
     document.getElementById('registerBtn').addEventListener('click', async () => {
       if (!email() || password().length < 6) {
