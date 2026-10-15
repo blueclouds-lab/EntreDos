@@ -94,6 +94,7 @@ if(saved.A&&Number.isFinite(saved.A.lat)&&Number.isFinite(saved.A.lng))setPoint(
   try {
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
+    const db = firebase.database();
     const email = () => emailInput.value.trim();
     const password = () => passwordInput.value;
     const updateAccess = (user) => {
