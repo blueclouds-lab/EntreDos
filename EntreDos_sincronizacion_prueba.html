@@ -33,7 +33,7 @@
 </section>
 <div id="appContent" class="locked">
 
-<div class="people"><section class="card person"><div class="person-head"><div class="avatar">⌂</div><div><h2>Persona A</h2><small>Tu ubicación</small></div></div><label for="nameA">Nombre</label><input id="nameA" value="Yo" maxlength="40"><button class="btn light" id="locA">◎ Usar mi ubicación</button><button class="btn light" id="pickA">Elegir en el mapa</button></section>
+<div class="people"><section class="card person"><div class="person-head"><div class="avatar">⌂</div><div><h2>Persona A</h2><small>Tu ubicación</small></div></div><label for="nameA">Nombre</label><input id="nameA" value="Yo" maxlength="40"><button class="btn light" id="locA">◎ Usar mi ubicación</button><button class="btn light" id="watchA">Compartir ubicación en directo</button><button class="btn light" id="pickA">Elegir en el mapa</button></section>
 <section class="card person"><div class="person-head"><div class="avatar">♡</div><div><h2>Persona B</h2><small>Tu persona</small></div></div><label for="nameB">Nombre</label><input id="nameB" value="Mi persona" maxlength="40"><button class="btn light" id="pickB">♡ Elegir en el mapa</button><button class="btn primary" id="invite">✉ Crear enlace privado</button><div class="hint" style="margin-top:7px">Podrá compartir su ubicación desde Safari, sin instalar EntreDos.</div></section></div>
 <section class="card"><p class="map-title">Vuestro mapa</p><div class="hint">Pulsa «Elegir en el mapa» y después toca el lugar deseado. También puedes arrastrar los marcadores.</div><div id="map" aria-label="Mapa interactivo"></div><div class="row" style="margin-top:10px"><button class="btn" id="clearB">Quitar Persona B</button><button class="btn" id="fit">Ver ambos puntos</button></div></section>
 <section class="card distance"><div class="eyebrow">Distancia por carretera</div><div class="km" id="km">— km</div><div class="hint" id="desc">Sitúa a ambas personas en el mapa.</div><button class="btn primary" id="route">Calcular ruta por carretera</button><div class="hint" id="duration" style="margin-top:8px"></div></section>
@@ -68,7 +68,7 @@ $('shareInvite').onclick=async()=>{const msg='Te invito a probar EntreDos conmig
 window.EntreDosMap={setPoint:(which,lat,lng)=>setPoint(which,L.latLng(lat,lng)),getPoint:which=>markers[which]?markers[which].getLatLng():null,fit:()=>{const pts=Object.values(markers).filter(Boolean).map(m=>m.getLatLng());if(pts.length===2)map.fitBounds(L.latLngBounds(pts),{padding:[25,25]});}};
 const params=new URLSearchParams(location.search);
 if(params.get('compartir')==='1'){sharePanel.hidden=false;$('shareTitle').textContent='Compartir mi ubicación';$('shareIntro').textContent='Tú decides si quieres compartir tu ubicación. No se obtiene hasta que pulses el botón y aceptes el permiso.';$('inviteActions').hidden=true;$('guestActions').hidden=false;$('shareNotice').textContent='Este prototipo puede compartir un enlace de mapa por Mensajes, pero no transmite la ubicación directamente al otro teléfono.';}
-$('guestClose').onclick=()=>{sharePanel.hidden=true;history.replaceState(null,'',location.pathname);};
+$('guestClose').onclick=()=>{if(locationWatch!==null){navigator.geolocation.clearWatch(locationWatch);locationWatch=null;}sharePanel.hidden=true;history.replaceState(null,'',location.pathname);};
 $('guestLocate').onclick=()=>{if(!navigator.geolocation){$('shareNotice').textContent='Este navegador no ofrece geolocalización.';return;} $('shareNotice').textContent='Solicitando permiso de ubicación…';navigator.geolocation.getCurrentPosition(async pos=>{const lat=pos.coords.latitude,lon=pos.coords.longitude;const mapUrl=`https://maps.apple.com/?ll=${lat},${lon}&q=Mi%20ubicaci%C3%B3n`;const msg='Comparto mi ubicación voluntariamente desde EntreDos: '+mapUrl;try{if(navigator.share){await navigator.share({title:'Mi ubicación para EntreDos',text:msg,url:mapUrl});$('shareNotice').textContent='Se ha abierto el menú para compartir tu ubicación. Esta acción no actualiza todavía el mapa de la otra persona automáticamente.';}else if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(msg);$('shareNotice').textContent='Enlace de mapa copiado. Puedes enviarlo por Mensajes; todavía no sincroniza automáticamente EntreDos.';}else{$('shareNotice').textContent=msg;}}catch(e){if(e.name!=='AbortError')$('shareNotice').textContent=msg; }},err=>$('shareNotice').textContent=err.code===1?'No se concedió permiso para la ubicación.':'No se pudo obtener la ubicación. En Safari, la página debe abrirse mediante HTTPS.',{enableHighAccuracy:true,timeout:15000,maximumAge:30000});};
 if(saved.A&&Number.isFinite(saved.A.lat)&&Number.isFinite(saved.A.lng))setPoint('A',L.latLng(saved.A.lat,saved.A.lng));if(saved.B&&Number.isFinite(saved.B.lat)&&Number.isFinite(saved.B.lng))setPoint('B',L.latLng(saved.B.lat,saved.B.lng));if(markers.A&&markers.B)map.fitBounds(L.latLngBounds([markers.A.getLatLng(),markers.B.getLatLng()]),{padding:[25,25]});setTimeout(()=>map.invalidateSize(),200);
 </script>
@@ -200,10 +200,13 @@ if (!user) {
  async function start(id,slot){
   roomId=id;mySlot=slot;
   if(slot==='B'){
-   const a=await room().child('members/A').once('value');if(!a.exists())throw Error('La sala no existe.');
+   // Reclamar primero B: las reglas solo permiten crearlo si A ya existe.
+   // Después de inscribirse, B puede leer los miembros de la sala.
    const b=await room().child('members/B').once('value');
-   if(b.exists()&&b.val().uid!==auth.currentUser.uid)throw Error('El enlace ya está vinculado a otra sesión de invitado.');
+   if(b.exists()&&b.val().uid!==auth.currentUser.uid)throw Error('Este enlace ya está vinculado a otra sesión de invitado.');
    if(!b.exists())await room().child('members/B').set({uid:auth.currentUser.uid,name:$('nameB').value||'Persona B'});
+   const a=await room().child('members/A').once('value');
+   if(!a.exists())throw Error('La sala no existe o el enlace no es válido.');
   }
   listeners.forEach(r=>r.off());listeners=[];
   const currentPoint=window.EntreDosMap&&window.EntreDosMap.getPoint(slot);
@@ -211,6 +214,21 @@ if (!user) {
   ['A','B'].forEach(s=>{const r=room().child('locations/'+s);r.on('value',snap=>{if(!snap.exists())return;const v=snap.val();if(!Number.isFinite(v.lat)||!Number.isFinite(v.lng))return;applyingRemote=true;window.EntreDosMap.setPoint(s,v.lat,v.lng);applyingRemote=false;window.EntreDosMap.fit();});listeners.push(r);});
   show(slot==='A'?'Sala creada. Esperando a que tu persona abra el enlace.':'Has entrado en la sala. Tú decides cuándo compartir tu ubicación.');
  }
+ let ownerWatch=null;
+ $('watchA').onclick=()=>{
+  if(!roomId||mySlot!=='A'){show('Primero crea el enlace privado para abrir una sala.');return;}
+  if(!navigator.geolocation){show('Este navegador no permite obtener la ubicación.');return;}
+  if(ownerWatch!==null){navigator.geolocation.clearWatch(ownerWatch);ownerWatch=null;$('watchA').textContent='Compartir ubicación en directo';$('shareNotice').textContent='Has detenido la ubicación en directo. El último punto seguirá visible.';show('Has detenido el seguimiento de tu ubicación.');return;}
+  $('shareNotice').textContent='Safari solicitará permiso. Si lo autorizas, tu ubicación se actualizará mientras la página permanezca activa.';
+  ownerWatch=navigator.geolocation.watchPosition(async p=>{
+   try{await room().child('locations/A').set({lat:p.coords.latitude,lng:p.coords.longitude,updatedAt:firebase.database.ServerValue.TIMESTAMP});$('watchA').textContent='Detener ubicación en directo';$('shareNotice').textContent='Compartiendo tu ubicación en tiempo real. Pulsa de nuevo para detenerla.';}
+   catch(e){show('No se pudo sincronizar tu ubicación. Las reglas de Firebase todavía pueden estar cerradas.');}
+  },e=>{
+   $('shareNotice').textContent=e.code===1?'No has concedido permiso para compartir tu ubicación.':'No se pudo obtener la ubicación. Comprueba los permisos de Safari y que la página use HTTPS.';
+   if(ownerWatch!==null){navigator.geolocation.clearWatch(ownerWatch);ownerWatch=null;$('watchA').textContent='Compartir ubicación en directo';}
+  },{enableHighAccuracy:true,timeout:15000,maximumAge:5000});
+ };
+ window.addEventListener('pagehide',()=>{if(ownerWatch!==null)navigator.geolocation.clearWatch(ownerWatch);if(locationWatch!==null)navigator.geolocation.clearWatch(locationWatch);});
  window.__entredosLocalPositionChanged=async(s,ll)=>{if(applyingRemote||!roomId||s!==mySlot)return;try{await room().child('locations/'+s).set({lat:ll.lat,lng:ll.lng,updatedAt:firebase.database.ServerValue.TIMESTAMP});}catch(e){show('Sincronización bloqueada por las reglas de Firebase.');}};
  window.__entredosCreateRoom=async()=>{
   try{
