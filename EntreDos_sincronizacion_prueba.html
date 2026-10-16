@@ -200,11 +200,10 @@ if (!user) {
  async function start(id,slot){
   roomId=id;mySlot=slot;
   if(slot==='B'){
-   // Reclamar primero B: las reglas solo permiten crearlo si A ya existe.
-   // Después de inscribirse, B puede leer los miembros de la sala.
-   const b=await room().child('members/B').once('value');
-   if(b.exists()&&b.val().uid!==auth.currentUser.uid)throw Error('Este enlace ya está vinculado a otra sesión de invitado.');
-   if(!b.exists())await room().child('members/B').set({uid:auth.currentUser.uid,name:$('nameB').value||'Persona B'});
+   // La lectura de miembros se autoriza solo después de pertenecer a la sala.
+   // Intentar reclamar B directamente: las reglas rechazan salas inexistentes
+   // y enlaces que ya pertenecen a otro invitado.
+   await room().child('members/B').set({uid:auth.currentUser.uid,name:$('nameB').value||'Persona B'});
    const a=await room().child('members/A').once('value');
    if(!a.exists())throw Error('La sala no existe o el enlace no es válido.');
   }
