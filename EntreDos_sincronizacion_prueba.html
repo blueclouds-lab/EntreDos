@@ -206,6 +206,8 @@ if (!user) {
    if(!b.exists())await room().child('members/B').set({uid:auth.currentUser.uid,name:$('nameB').value||'Persona B'});
   }
   listeners.forEach(r=>r.off());listeners=[];
+  const currentPoint=window.EntreDosMap&&window.EntreDosMap.getPoint(slot);
+  if(currentPoint) await room().child('locations/'+slot).set({lat:currentPoint.lat,lng:currentPoint.lng,updatedAt:firebase.database.ServerValue.TIMESTAMP});
   ['A','B'].forEach(s=>{const r=room().child('locations/'+s);r.on('value',snap=>{if(!snap.exists())return;const v=snap.val();if(!Number.isFinite(v.lat)||!Number.isFinite(v.lng))return;applyingRemote=true;window.EntreDosMap.setPoint(s,v.lat,v.lng);applyingRemote=false;window.EntreDosMap.fit();});listeners.push(r);});
   show(slot==='A'?'Sala creada. Esperando a que tu persona abra el enlace.':'Has entrado en la sala. Tú decides cuándo compartir tu ubicación.');
  }
