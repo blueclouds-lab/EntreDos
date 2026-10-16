@@ -1,0 +1,30 @@
+{
+  "rules": {
+    "rooms": {
+      "$roomId": {
+        "members": {
+          ".read": "auth != null && (data.child('A').child('uid').val() === auth.uid || data.child('B').child('uid').val() === auth.uid)",
+          "A": {
+            ".write": "auth != null && !root.child('rooms').child($roomId).exists() && newData.child('uid').val() === auth.uid && auth.token.email_verified === true",
+            ".validate": "newData.hasChildren(['uid','name']) && newData.child('uid').isString() && newData.child('name').isString()"
+          },
+          "B": {
+            ".write": "auth != null && root.child('rooms').child($roomId).child('members').child('A').exists() && ((!data.exists() && newData.child('uid').val() === auth.uid && root.child('rooms').child($roomId).child('members').child('A').child('uid').val() !== auth.uid) || (data.exists() && data.child('uid').val() === auth.uid && newData.child('uid').val() === auth.uid))",
+            ".validate": "newData.hasChildren(['uid','name']) && newData.child('uid').isString() && newData.child('name').isString()"
+          }
+        },
+        "locations": {
+          ".read": "auth != null && (root.child('rooms').child($roomId).child('members').child('A').child('uid').val() === auth.uid || root.child('rooms').child($roomId).child('members').child('B').child('uid').val() === auth.uid)",
+          "A": {
+            ".write": "auth != null && root.child('rooms').child($roomId).child('members').child('A').child('uid').val() === auth.uid",
+            ".validate": "newData.hasChildren(['lat','lng']) && newData.child('lat').isNumber() && newData.child('lat').val() >= -90 && newData.child('lat').val() <= 90 && newData.child('lng').val() >= -180 && newData.child('lng').val() <= 180"
+          },
+          "B": {
+            ".write": "auth != null && root.child('rooms').child($roomId).child('members').child('B').child('uid').val() === auth.uid",
+            ".validate": "newData.hasChildren(['lat','lng']) && newData.child('lat').isNumber() && newData.child('lat').val() >= -90 && newData.child('lat').val() <= 90 && newData.child('lng').val() >= -180 && newData.child('lng').val() <= 180"
+          }
+        }
+      }
+    }
+  }
+}
