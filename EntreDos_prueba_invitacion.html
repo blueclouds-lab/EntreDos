@@ -186,8 +186,8 @@ if(saved.A&&Number.isFinite(saved.A.lat)&&Number.isFinite(saved.A.lng))setPoint(
 
     async function prepareInviteLink() {
       const user = signedInUser();
-      if (!isVerifiedOrAnonymous(user)) {
-        pairMessage('Primero inicia sesión o pulsa «Continuar sin correo (prueba)».');
+      if (!user || user.isAnonymous || !user.emailVerified) {
+        pairMessage('Para crear una invitación privada, inicia sesión con tu cuenta de EntreDos y comprueba que el correo figure como verificado. La otra persona sí podrá entrar mediante el enlace sin correo ni contraseña.');
         return;
       }
       if (!window.crypto || !crypto.randomUUID) {
