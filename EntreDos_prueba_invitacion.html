@@ -47,7 +47,7 @@
 <div class="hint" id="shareNotice" style="margin-top:10px"></div>
 </section>
 <section class="card"><strong>Estado</strong><div class="status" id="status" role="status">El mapa necesita conexión a Internet. Las ubicaciones elegidas se guardan solo en este navegador.</div></section>
-<p class="privacy">La ubicación solo se obtiene con permiso. Esta versión es un prototipo local: el botón de invitación prepara un mensaje, pero todavía no sincroniza los dos teléfonos. Para que el enlace funcione desde otro iPhone, la página deberá estar publicada de forma segura y necesitará un canal de comunicación compartido.</p></div><!-- appContent -->
+<p class="privacy">El enlace privado y el consentimiento están en fase de prueba. Esta versión todavía no transmite ubicaciones entre teléfonos. No compartas el enlace hasta que hayamos terminado de revisar y activar las reglas de seguridad.</p></div><!-- appContent -->
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
 const $=id=>document.getElementById(id);let selecting=null,markers={A:null,B:null},routeLayer=null;const saved=(()=>{try{return JSON.parse(localStorage.getItem('entredos-map-v1')||'{}')}catch(e){return {}}})();$('nameA').value=saved.nameA||'Yo';$('nameB').value=saved.nameB||'Mi persona';
@@ -201,6 +201,7 @@ if(saved.A&&Number.isFinite(saved.A.lat)&&Number.isFinite(saved.A.lng))setPoint(
       try {
         await pairRef(pairId).set(record);
         currentPairId = pairId;
+        try { localStorage.setItem('entredos-current-pair', pairId); } catch (e) {}
         const inviteUrl = new URL(location.pathname, location.origin);
         inviteUrl.searchParams.set('pareja', pairId);
         window.entredosInviteUrl = inviteUrl.toString();
@@ -376,6 +377,7 @@ if (!user) {
     });
 
     let incomingInviteStarted = false;
+    let restoredOwnerPair = false;
     auth.onAuthStateChanged(async (user) => {
       if (user) {
         try { await user.reload(); } catch (e) {}
@@ -385,6 +387,26 @@ if (!user) {
           await openIncomingInvite();
         } else if (invitePairId && currentPairId !== invitePairId) {
           await startPairListener(invitePairId);
+        } else if (!invitePairId && !restoredOwnerPair && isVerifiedOrAnonymous(auth.currentUser)) {
+          restoredOwnerPair = true;
+          let savedPairId = null;
+          try { savedPairId = localStorage.getItem('entredos-current-pair'); } catch (e) {}
+          if (savedPairId) {
+            try {
+              const savedSnap = await pairRef(savedPairId).get();
+              if (savedSnap.exists() && savedSnap.val().ownerUid === auth.currentUser.uid) {
+                currentPairId = savedPairId;
+                const savedUrl = new URL(location.pathname, location.origin);
+                savedUrl.searchParams.set('pareja', savedPairId);
+                window.entredosInviteUrl = savedUrl.toString();
+                shareInviteBtn.disabled = false;
+                showOwnerPanel();
+                await startPairListener(savedPairId);
+              }
+            } catch (e) {
+              // Rules remain closed until the draft is reviewed and applied.
+            }
+          }
         }
       } else {
         updateAccess(null);
