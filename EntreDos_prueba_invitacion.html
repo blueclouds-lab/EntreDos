@@ -41,7 +41,8 @@
 <section class="card" id="sharePanel" hidden>
 <strong id="shareTitle">Invitar a mi persona</strong>
 <p class="hint" id="shareIntro">Prepara una invitación para que la otra persona pueda abrirla en su iPhone.</p>
-<div id="inviteActions"><button class="btn primary" id="shareInvite">Compartir invitación</button><button class="btn light" id="closeShare">Cerrar</button></div>
+<div id="inviteActions"><button class="btn primary" id="createPairBtn">Crear enlace privado</button><button class="btn light" id="shareInvite" disabled>Compartir enlace</button><button class="btn light" id="revokePairBtn" hidden>Revocar invitación</button><button class="btn light" id="closeShare">Cerrar</button></div>
+<div id="pairActions" hidden><p class="hint">Has recibido una invitación privada. Al aceptarla, la persona que creó el enlace quedará vinculada contigo. La ubicación no se compartirá hasta que ambas personas den su consentimiento.</p><button class="btn primary" id="acceptPairBtn">Aceptar invitación</button><button class="btn light" id="consentPairBtn" hidden>Acepto compartir mi ubicación</button><button class="btn light" id="pairCloseBtn">Cerrar</button></div>
 <div id="guestActions" hidden><p class="hint">Esta pantalla permite a la otra persona obtener su ubicación y compartirla voluntariamente.</p><button class="btn primary" id="guestLocate">Compartir mi ubicación</button><button class="btn light" id="guestClose">Volver al mapa</button></div>
 <div class="hint" id="shareNotice" style="margin-top:10px"></div>
 </section>
@@ -97,6 +98,200 @@ if(saved.A&&Number.isFinite(saved.A.lat)&&Number.isFinite(saved.A.lng))setPoint(
     const auth = firebase.auth();
     const db = firebase.database();
     const email = () => emailInput.value.trim();
+
+    let currentPairId = null;
+    let currentPairData = null;
+    let pairListener = null;
+    const inviteParams = new URLSearchParams(location.search);
+    const invitePairId = inviteParams.get('pareja');
+    const shareNotice = document.getElementById('shareNotice');
+    const inviteActions = document.getElementById('inviteActions');
+    const pairActions = document.getElementById('pairActions');
+    const createPairBtn = document.getElementById('createPairBtn');
+    const shareInviteBtn = document.getElementById('shareInvite');
+    const revokePairBtn = document.getElementById('revokePairBtn');
+    const acceptPairBtn = document.getElementById('acceptPairBtn');
+    const consentPairBtn = document.getElementById('consentPairBtn');
+    const pairCloseBtn = document.getElementById('pairCloseBtn');
+    const showSharePanel = () => { document.getElementById('sharePanel').hidden = false; };
+    const pairMessage = (message) => { shareNotice.textContent = message; };
+    const pairRef = (pairId) => db.ref('pairs/' + pairId);
+    const signedInUser = () => auth.currentUser;
+    const isVerifiedOrAnonymous = (user) => !!(user && (user.isAnonymous || user.emailVerified));
+
+    function showOwnerPanel() {
+      showSharePanel();
+      document.getElementById('shareTitle').textContent = 'Invitar a mi persona';
+      document.getElementById('shareIntro').textContent = 'Crea un enlace privado y envíaselo a la otra persona. El enlace no comparte ubicación por sí solo.';
+      inviteActions.hidden = false;
+      pairActions.hidden = true;
+      document.getElementById('guestActions').hidden = true;
+    }
+
+    function showJoinPanel() {
+      showSharePanel();
+      document.getElementById('shareTitle').textContent = 'Aceptar invitación';
+      document.getElementById('shareIntro').textContent = 'Abre este enlace en Safari y acepta solo si reconoces a la persona que te ha invitado.';
+      inviteActions.hidden = true;
+      pairActions.hidden = false;
+      document.getElementById('guestActions').hidden = true;
+    }
+
+    async function startPairListener(pairId) {
+      if (pairListener && currentPairId) pairRef(currentPairId).off('value', pairListener);
+      currentPairId = pairId;
+      pairListener = snap => {
+        if (!snap.exists()) {
+          currentPairData = null;
+          pairMessage('No se encontró esta invitación. Pide a la otra persona que cree un enlace nuevo.');
+          return;
+        }
+        currentPairData = snap.val();
+        const user = signedInUser();
+        const isOwner = !!(user && currentPairData.ownerUid === user.uid);
+        const isPartner = !!(user && currentPairData.partnerUid === user.uid);
+        if (currentPairData.status === 'revoked') {
+          pairMessage('Esta invitación ha sido revocada. Ya no se puede aceptar ni compartir ubicación.');
+          acceptPairBtn.hidden = true;
+          consentPairBtn.hidden = true;
+          revokePairBtn.hidden = true;
+          return;
+        }
+        if (!isOwner && !isPartner && currentPairData.status !== 'pending') {
+          pairMessage('No tienes acceso a esta invitación.');
+          return;
+        }
+        acceptPairBtn.hidden = isOwner || isPartner || currentPairData.status !== 'pending' || !!currentPairData.partnerUid;
+        consentPairBtn.hidden = !(isOwner || isPartner);
+        consentPairBtn.textContent = (isOwner ? currentPairData.ownerConsent : currentPairData.partnerConsent) ? 'Retirar mi consentimiento' : 'Acepto compartir mi ubicación';
+        revokePairBtn.hidden = !isOwner;
+        const bothConsented = currentPairData.ownerConsent === true && currentPairData.partnerConsent === true && !!currentPairData.partnerUid;
+        if (isOwner) {
+          pairMessage(bothConsented ? 'Las dos personas han dado su consentimiento. La invitación está preparada; la sincronización de ubicación aún no se ha activado.' :
+            (currentPairData.partnerUid ? 'La otra persona se ha unido. Falta que ambas personas acepten compartir.' : 'Enlace privado creado. Esperando a que la otra persona lo acepte.'));
+        } else if (isPartner) {
+          pairMessage(bothConsented ? 'Ambas personas han aceptado. La sincronización de ubicación todavía no está activada.' :
+            'Te has unido a la invitación. Puedes aceptar o retirar tu consentimiento cuando quieras.');
+        } else {
+          pairMessage('Invitación pendiente. Pulsa «Aceptar invitación» si reconoces a la persona.');
+        }
+        if (isOwner && bothConsented && currentPairData.status === 'pending') {
+          pairRef(pairId).child('status').set('active').catch(error => pairMessage('No se pudo activar la invitación: ' + (error.message || error.code) + '. La base de datos puede seguir cerrada.'));
+        }
+      };
+      pairRef(pairId).on('value', pairListener, error => {
+        pairMessage('No se pudo leer la invitación: ' + (error.message || error.code) + '. La base de datos sigue cerrada hasta que revisemos las reglas.');
+      });
+    }
+
+    async function prepareInviteLink() {
+      const user = signedInUser();
+      if (!isVerifiedOrAnonymous(user)) {
+        pairMessage('Primero inicia sesión o pulsa «Continuar sin correo (prueba)».');
+        return;
+      }
+      if (!window.crypto || !crypto.randomUUID) {
+        pairMessage('Este navegador no puede generar un identificador seguro. Abre la página actualizada en Safari o en un navegador moderno.');
+        return;
+      }
+      const pairId = crypto.randomUUID();
+      const record = { ownerUid: user.uid, status: 'pending', ownerConsent: false, partnerConsent: false };
+      createPairBtn.disabled = true;
+      pairMessage('Creando invitación privada…');
+      try {
+        await pairRef(pairId).set(record);
+        currentPairId = pairId;
+        const inviteUrl = new URL(location.pathname, location.origin);
+        inviteUrl.searchParams.set('pareja', pairId);
+        window.entredosInviteUrl = inviteUrl.toString();
+        shareInviteBtn.disabled = false;
+        revokePairBtn.hidden = false;
+        pairMessage('Enlace privado creado. Puedes compartirlo con la otra persona. No se enviará ninguna ubicación en este paso.');
+        await startPairListener(pairId);
+      } catch (error) {
+        pairMessage('No se pudo guardar la invitación: ' + (error.message || error.code) + '. Es normal mientras la base de datos siga cerrada; aún no cambies las reglas.');
+      } finally {
+        createPairBtn.disabled = false;
+      }
+    }
+
+    createPairBtn.addEventListener('click', prepareInviteLink);
+    shareInviteBtn.onclick = async () => {
+      const url = window.entredosInviteUrl;
+      if (!url) { pairMessage('Primero crea una invitación privada.'); return; }
+      const message = 'Te invito a EntreDos. Abre este enlace en Safari y acepta solo si quieres vincularte conmigo: ' + url;
+      try {
+        if (navigator.share) {
+          await navigator.share({ title: 'Invitación privada a EntreDos', text: message, url });
+          pairMessage('Se ha abierto el menú para compartir el enlace. La ubicación no se comparte todavía.');
+        } else if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(message);
+          pairMessage('Enlace copiado. Puedes pegarlo en Mensajes. La ubicación no se comparte todavía.');
+        } else {
+          pairMessage(message);
+        }
+      } catch (error) {
+        if (error.name !== 'AbortError') pairMessage(message);
+      }
+    };
+    revokePairBtn.addEventListener('click', async () => {
+      if (!currentPairId || !window.confirm('¿Quieres revocar esta invitación? La otra persona ya no podrá usar este vínculo.')) return;
+      try {
+        await pairRef(currentPairId).child('status').set('revoked');
+        pairMessage('Invitación revocada.');
+      } catch (error) {
+        pairMessage('No se pudo revocar: ' + (error.message || error.code) + '. La base de datos puede seguir cerrada.');
+      }
+    });
+    acceptPairBtn.addEventListener('click', async () => {
+      const user = signedInUser();
+      if (!currentPairId || !user) { pairMessage('No se pudo identificar la invitación o la sesión. Recarga el enlace e inténtalo de nuevo.'); return; }
+      try {
+        const snap = await pairRef(currentPairId).get();
+        if (!snap.exists() || snap.val().status !== 'pending') { pairMessage('Esta invitación ya no está disponible.'); return; }
+        const data = snap.val();
+        if (data.ownerUid === user.uid) { pairMessage('Este enlace pertenece a esta misma sesión. Ábrelo desde el otro iPhone para aceptar.'); return; }
+        if (data.partnerUid && data.partnerUid !== user.uid) { pairMessage('Esta invitación ya ha sido aceptada por otra sesión. Pide a la persona que cree otra.'); return; }
+        if (!data.partnerUid) {
+          const result = await pairRef(currentPairId).child('partnerUid').transaction(value => value == null ? user.uid : undefined);
+          if (!result.committed || result.snapshot.val() !== user.uid) { pairMessage('Otra sesión ya ha aceptado esta invitación. Pide un enlace nuevo si no eras tú.'); return; }
+        }
+        pairMessage('Invitación aceptada. Aún falta que ambas personas den su consentimiento para compartir ubicación.');
+        await startPairListener(currentPairId);
+      } catch (error) {
+        pairMessage('No se pudo aceptar la invitación: ' + (error.message || error.code) + '. La base de datos puede seguir cerrada.');
+      }
+    });
+    consentPairBtn.addEventListener('click', async () => {
+      const user = signedInUser();
+      if (!currentPairId || !currentPairData || !user) { pairMessage('No hay una invitación activa cargada.'); return; }
+      const isOwner = currentPairData.ownerUid === user.uid;
+      const isPartner = currentPairData.partnerUid === user.uid;
+      if (!isOwner && !isPartner) { pairMessage('Solo las dos personas vinculadas pueden dar consentimiento.'); return; }
+      const key = isOwner ? 'ownerConsent' : 'partnerConsent';
+      try {
+        await pairRef(currentPairId).child(key).set(currentPairData[key] !== true);
+        pairMessage(currentPairData[key] === true ? 'Has retirado tu consentimiento.' : 'Has dado tu consentimiento. La ubicación aún no se transmite en esta versión.');
+      } catch (error) {
+        pairMessage('No se pudo guardar el consentimiento: ' + (error.message || error.code) + '. La base de datos puede seguir cerrada.');
+      }
+    });
+    pairCloseBtn.addEventListener('click', () => { document.getElementById('sharePanel').hidden = true; });
+
+    document.getElementById('invite').onclick = showOwnerPanel;
+    document.getElementById('closeShare').onclick = () => { document.getElementById('sharePanel').hidden = true; };
+
+    async function openIncomingInvite() {
+      if (!invitePairId) return;
+      showJoinPanel();
+      if (!signedInUser()) {
+        pairMessage('Preparando acceso sin correo para esta invitación…');
+        try { await auth.signInAnonymously(); }
+        catch (error) { pairMessage('No se pudo abrir la invitación sin correo: ' + (error.message || error.code) + '. Comprueba que el acceso anónimo esté habilitado en Firebase.'); }
+      } else {
+        await startPairListener(invitePairId);
+      }
+    }
     const password = () => passwordInput.value;
     const updateAccess = (user) => {
 const verified = !!(user && user.emailVerified);
@@ -180,12 +375,23 @@ if (!user) {
       }
     });
 
+    let incomingInviteStarted = false;
     auth.onAuthStateChanged(async (user) => {
       if (user) {
         try { await user.reload(); } catch (e) {}
         updateAccess(auth.currentUser);
+        if (invitePairId && !incomingInviteStarted) {
+          incomingInviteStarted = true;
+          await openIncomingInvite();
+        } else if (invitePairId && currentPairId !== invitePairId) {
+          await startPairListener(invitePairId);
+        }
       } else {
         updateAccess(null);
+        if (invitePairId && !incomingInviteStarted) {
+          incomingInviteStarted = true;
+          await openIncomingInvite();
+        }
       }
     });
 
