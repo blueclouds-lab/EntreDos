@@ -16,7 +16,7 @@
           ".validate": "newData.isString() || !newData.exists()"
         },
         "status": {
-          ".write": "auth != null && auth.uid == root.child('pairs').child($pairId).child('ownerUid').val() && ((newData.val() == 'revoked' && (data.val() == 'pending' || data.val() == 'active')) || (newData.val() == 'active' && data.val() == 'pending' && root.child('pairs').child($pairId).child('partnerUid').exists() && root.child('pairs').child($pairId).child('ownerConsent').val() == true && root.child('pairs').child($pairId).child('partnerConsent').val() == true))",
+          ".write": "auth != null && (auth.uid == root.child('pairs').child($pairId).child('ownerUid').val() || auth.uid == root.child('pairs').child($pairId).child('partnerUid').val()) && ((newData.val() == 'revoked' && (data.val() == 'pending' || data.val() == 'active')) || (auth.uid == root.child('pairs').child($pairId).child('ownerUid').val() && newData.val() == 'active' && data.val() == 'pending' && root.child('pairs').child($pairId).child('partnerUid').exists() && root.child('pairs').child($pairId).child('ownerConsent').val() == true && root.child('pairs').child($pairId).child('partnerConsent').val() == true))",
           ".validate": "newData.val() == 'pending' || newData.val() == 'revoked' || (newData.val() == 'active' && root.child('pairs').child($pairId).child('partnerUid').exists() && root.child('pairs').child($pairId).child('ownerConsent').val() == true && root.child('pairs').child($pairId).child('partnerConsent').val() == true)"
         },
         "ownerConsent": {
