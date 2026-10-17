@@ -269,12 +269,18 @@ if(saved.A&&Number.isFinite(saved.A.lat)&&Number.isFinite(saved.A.lng))setPoint(
       const isOwner = currentPairData.ownerUid === user.uid;
       const isPartner = currentPairData.partnerUid === user.uid;
       if (!isOwner && !isPartner) { pairMessage('Solo las dos personas vinculadas pueden dar consentimiento.'); return; }
+      if (currentPairData.status === 'revoked') { pairMessage('Este vínculo ya está cerrado. Para compartir de nuevo, la persona propietaria debe crear una invitación nueva.'); return; }
       const key = isOwner ? 'ownerConsent' : 'partnerConsent';
       try {
-        await pairRef(currentPairId).child(key).set(currentPairData[key] !== true);
-        pairMessage(currentPairData[key] === true ? 'Has retirado tu consentimiento.' : 'Has dado tu consentimiento. La ubicación aún no se transmite en esta versión.');
+        if (currentPairData[key] === true) {
+          await pairRef(currentPairId).update({ [key]: false, status: 'revoked' });
+          pairMessage('Has retirado tu consentimiento y cerrado este vínculo. Para volver a compartir, será necesaria una invitación nueva.');
+        } else {
+          await pairRef(currentPairId).child(key).set(true);
+          pairMessage('Has dado tu consentimiento. La ubicación no se transmitirá hasta que ambas personas acepten.');
+        }
       } catch (error) {
-        pairMessage('No se pudo guardar el consentimiento: ' + (error.message || error.code) + '. La base de datos puede seguir cerrada.');
+        pairMessage('No se pudo guardar el consentimiento: ' + (error.message || error.code) + '. No cambies las reglas de Firebase todavía.');
       }
     });
     pairCloseBtn.addEventListener('click', () => { document.getElementById('sharePanel').hidden = true; });
