@@ -20,11 +20,11 @@
           ".validate": "newData.val() == 'pending' || newData.val() == 'revoked' || (newData.val() == 'active' && root.child('pairs').child($pairId).child('partnerUid').exists() && root.child('pairs').child($pairId).child('ownerConsent').val() == true && root.child('pairs').child($pairId).child('partnerConsent').val() == true)"
         },
         "ownerConsent": {
-          ".write": "auth != null && auth.uid == root.child('pairs').child($pairId).child('ownerUid').val() && root.child('pairs').child($pairId).child('status').val() != 'revoked'",
+          ".write": "auth != null && auth.uid == root.child('pairs').child($pairId).child('ownerUid').val() && ((newData.val() == true && data.val() == false && root.child('pairs').child($pairId).child('status').val() == 'pending') || (newData.val() == false && (data.val() == true || data.val() == false) && newData.parent().child('status').val() == 'revoked'))",
           ".validate": "newData.isBoolean()"
         },
         "partnerConsent": {
-          ".write": "auth != null && auth.uid == root.child('pairs').child($pairId).child('partnerUid').val() && root.child('pairs').child($pairId).child('status').val() != 'revoked'",
+          ".write": "auth != null && auth.uid == root.child('pairs').child($pairId).child('partnerUid').val() && ((newData.val() == true && data.val() == false && root.child('pairs').child($pairId).child('status').val() == 'pending') || (newData.val() == false && (data.val() == true || data.val() == false) && newData.parent().child('status').val() == 'revoked'))",
           ".validate": "newData.isBoolean()"
         },
         "$other": {
