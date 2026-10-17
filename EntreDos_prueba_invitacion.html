@@ -24,6 +24,7 @@
   <div class="auth-actions">
     <button class="btn primary" id="registerBtn">Crear cuenta</button>
     <button class="btn" id="loginBtn">Iniciar sesión</button>
+    <button class="btn" id="anonymousBtn">Continuar sin correo (prueba)</button>
   </div>
   <div class="auth-actions">
     <button class="btn" id="verifyBtn">Enviar verificación</button>
@@ -125,6 +126,20 @@ if (!user) {
         setAuthStatus('Cuenta creada. Hemos enviado un correo de verificación. Confirma el enlace y después vuelve aquí e inicia sesión.');
       } catch (error) {
         setAuthStatus('No se pudo crear la cuenta: ' + (error.message || error.code));
+      }
+    });
+
+    document.getElementById('anonymousBtn').addEventListener('click', async () => {
+      try {
+        if (auth.currentUser && auth.currentUser.isAnonymous) {
+          updateAccess(auth.currentUser);
+          setAuthStatus('Acceso anónimo de prueba activo. No se comparte ni sincroniza ninguna ubicación.');
+          return;
+        }
+        await auth.signInAnonymously();
+        setAuthStatus('Acceso anónimo de prueba activo. No se comparte ni sincroniza ninguna ubicación.');
+      } catch (error) {
+        setAuthStatus('No se pudo activar el acceso anónimo: ' + (error.message || error.code) + '. Comprueba que el acceso anónimo esté habilitado en Firebase.');
       }
     });
 
