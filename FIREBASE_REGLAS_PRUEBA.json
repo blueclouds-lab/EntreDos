@@ -5,7 +5,7 @@
     "pairs": {
       "$pairId": {
         ".read": "auth != null && (data.child('ownerUid').val() == auth.uid || data.child('partnerUid').val() == auth.uid || data.child('status').val() == 'pending')",
-        ".write": "auth != null && !data.exists() && newData.child('ownerUid').val() == auth.uid && newData.child('status').val() == 'pending'",
+        ".write": "auth != null && auth.token.email_verified == true && !data.exists() && newData.child('ownerUid').val() == auth.uid && newData.child('status').val() == 'pending'",
         ".validate": "newData.hasChildren(['ownerUid', 'status', 'ownerConsent', 'partnerConsent'])",
         "ownerUid": {
           ".write": "auth != null && ((!data.exists() && newData.val() == auth.uid) || (data.exists() && auth.uid == data.val() && newData.val() == data.val()))",
