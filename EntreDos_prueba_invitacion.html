@@ -164,6 +164,7 @@ if(saved.A&&Number.isFinite(saved.A.lat)&&Number.isFinite(saved.A.lng))setPoint(
     const showSharePanel = () => { document.getElementById('sharePanel').hidden = false; };
     const pairMessage = (message) => { shareNotice.textContent = message; };
     const pairRef = (pairId) => db.ref('pairs/' + pairId);
+    const rootRef = () => db.ref();
     const signedInUser = () => auth.currentUser;
     const isVerifiedOrAnonymous = (user) => !!(user && (user.isAnonymous || user.emailVerified));
 
@@ -290,7 +291,7 @@ if(saved.A&&Number.isFinite(saved.A.lat)&&Number.isFinite(saved.A.lng))setPoint(
     revokePairBtn.addEventListener('click', async () => {
       if (!currentPairId || !window.confirm('¿Quieres revocar esta invitación? La otra persona ya no podrá usar este vínculo.')) return;
       try {
-        await pairRef(currentPairId).child('status').set('revoked');
+        await rootRef().update({ ['pairs/' + currentPairId + '/status']: 'revoked', ['locations/' + currentPairId]: null });
         pairMessage('Invitación revocada.');
       } catch (error) {
         pairMessage('No se pudo revocar: ' + (error.message || error.code) + '. La base de datos puede seguir cerrada.');
@@ -325,7 +326,7 @@ if(saved.A&&Number.isFinite(saved.A.lat)&&Number.isFinite(saved.A.lng))setPoint(
       const key = isOwner ? 'ownerConsent' : 'partnerConsent';
       try {
         if (currentPairData[key] === true) {
-          await pairRef(currentPairId).update({ [key]: false, status: 'revoked' });
+          await rootRef().update({ ['pairs/' + currentPairId + '/' + key]: false, ['pairs/' + currentPairId + '/status']: 'revoked', ['locations/' + currentPairId]: null });
           pairMessage('Has retirado tu consentimiento y cerrado este vínculo. Para volver a compartir, será necesaria una invitación nueva.');
         } else {
           await pairRef(currentPairId).child(key).set(true);
