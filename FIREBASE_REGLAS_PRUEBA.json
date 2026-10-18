@@ -4,7 +4,7 @@
     ".write": false,
     "pairs": {
       "$pairId": {
-        ".read": "auth != null && (data.child('ownerUid').val() == auth.uid || data.child('partnerUid').val() == auth.uid || (data.child('status').val() == 'pending' && !data.child('partnerUid').exists()))",
+        ".read": "auth != null && (data.child('ownerUid').val() == auth.uid || data.child('partnerUid').val() == auth.uid || (auth.token.firebase.sign_in_provider == 'anonymous' && data.child('status').val() == 'pending' && !data.child('partnerUid').exists()))",
         ".write": "auth != null && auth.token.email_verified == true && !data.exists() && newData.child('ownerUid').val() == auth.uid && newData.child('status').val() == 'pending' && newData.child('ownerConsent').val() == false && newData.child('partnerConsent').val() == false && !newData.child('partnerUid').exists()",
         ".validate": "newData.hasChildren(['ownerUid', 'status', 'ownerConsent', 'partnerConsent'])",
         "ownerUid": {
@@ -12,7 +12,7 @@
           ".validate": "newData.isString()"
         },
         "partnerUid": {
-          ".write": "auth != null && ((!data.exists() && newData.val() == auth.uid && root.child('pairs').child($pairId).child('status').val() == 'pending') || (data.exists() && auth.uid == root.child('pairs').child($pairId).child('ownerUid').val() && newData.val() == data.val()))",
+          ".write": "auth != null && ((!data.exists() && auth.token.firebase.sign_in_provider == 'anonymous' && newData.val() == auth.uid && root.child('pairs').child($pairId).child('status').val() == 'pending') || (data.exists() && auth.uid == root.child('pairs').child($pairId).child('ownerUid').val() && newData.val() == data.val()))",
           ".validate": "newData.isString() || !newData.exists()"
         },
         "status": {
