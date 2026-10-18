@@ -57,7 +57,7 @@ function icon(letter,color){return L.divIcon({className:'',html:`<div style="wid
 function setPoint(which,latlng){if(markers[which])map.removeLayer(markers[which]);const label=which==='A'?$('nameA').value:$('nameB').value;markers[which]=L.marker(latlng,{draggable:true,icon:icon(which,which==='A'?'#67b7eb':'#d779a7')}).addTo(map).bindPopup(label);markers[which].on('dragend',()=>{save();updateStraight();});save();updateStraight();}
 map.on('click',e=>{if(!selecting){status('Para colocar un punto, pulsa primero «Elegir en el mapa».');return}setPoint(selecting,e.latlng);status((selecting==='A'?'Tu ubicación':'La ubicación de tu persona')+' se ha colocado en el mapa.');selecting=null;});
 $('pickA').onclick=()=>{selecting='A';status('Ahora toca el mapa para colocar tu ubicación.');};$('pickB').onclick=()=>{selecting='B';status('Ahora toca el mapa para colocar a tu persona.');};
-$('locA').onclick=()=>{if(!navigator.geolocation){status('Este navegador no ofrece geolocalización.');return}status('Solicitando permiso para acceder a tu ubicación…');navigator.geolocation.getCurrentPosition(pos=>{setPoint('A',L.latLng(pos.coords.latitude,pos.coords.longitude));map.setView([pos.coords.latitude,pos.coords.longitude],14);status('Tu ubicación se ha añadido.');},err=>status(err.code===1?'No se concedió permiso para la ubicación.':'No se pudo obtener la ubicación. En Safari, abre esta página desde un contexto seguro (HTTPS) y comprueba los permisos.'),{enableHighAccuracy:true,timeout:15000,maximumAge:30000});};
+$('locA').onclick=()=>{if(!navigator.geolocation){status('Este navegador no ofrece geolocalización.');return}status('Solicitando permiso para acceder a tu ubicación…');navigator.geolocation.getCurrentPosition(pos=>{setPoint(window.entredosRole==='partner'?'B':'A',L.latLng(pos.coords.latitude,pos.coords.longitude));map.setView([pos.coords.latitude,pos.coords.longitude],14);if(window.entredosPublishLocation)window.entredosPublishLocation(pos.coords);status('Tu ubicación se ha añadido.');},err=>status(err.code===1?'No se concedió permiso para la ubicación.':'No se pudo obtener la ubicación. En Safari, abre esta página desde un contexto seguro (HTTPS) y comprueba los permisos.'),{enableHighAccuracy:true,timeout:15000,maximumAge:30000});};
 function updateStraight(){if(markers.A&&markers.B){const km=map.distance(markers.A.getLatLng(),markers.B.getLatLng())/1000;$('desc').textContent='Distancia en línea recta aproximada entre '+$('nameA').value+' y '+$('nameB').value+'.';$('km').textContent=km.toLocaleString('es-ES',{maximumFractionDigits:1})+' km (recta)';}else{$('km').textContent='— km';$('desc').textContent='Sitúa a ambas personas en el mapa.'}if(routeLayer){map.removeLayer(routeLayer);routeLayer=null}$('duration').textContent='';save();}
 $('route').onclick=async()=>{if(!markers.A||!markers.B){status('Coloca a las dos personas en el mapa antes de calcular la ruta.');return}status('Calculando ruta por carretera…');const a=markers.A.getLatLng(),b=markers.B.getLatLng();try{const url=`https://router.project-osrm.org/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson`;const r=await fetch(url);if(!r.ok)throw Error();const d=await r.json();if(d.code!=='Ok'||!d.routes?.length)throw Error();const rt=d.routes[0];if(routeLayer)map.removeLayer(routeLayer);routeLayer=L.geoJSON(rt.geometry,{style:{color:'#67b7eb',weight:5,opacity:.85}}).addTo(map);$('km').textContent=(rt.distance/1000).toLocaleString('es-ES',{maximumFractionDigits:1})+' km';$('desc').textContent='Distancia estimada por carretera.';$('duration').textContent='Tiempo estimado: '+Math.round(rt.duration/60)+' min';map.fitBounds(routeLayer.getBounds(),{padding:[25,25]});status('Ruta calculada.');}catch(e){status('No se pudo calcular la ruta. Comprueba la conexión e inténtalo de nuevo.');}};
 $('clearB').onclick=()=>{if(markers.B){map.removeLayer(markers.B);markers.B=null}updateStraight();status('Se ha quitado el marcador de Persona B.');};$('fit').onclick=()=>{const pts=Object.values(markers).filter(Boolean).map(m=>m.getLatLng());if(pts.length===2)map.fitBounds(L.latLngBounds(pts),{padding:[25,25]});else if(pts.length===1)map.setView(pts[0],13);else status('Coloca al menos un punto en el mapa.');};$('nameA').onchange=$('nameB').onchange=()=>{if(markers.A)markers.A.setPopupContent($('nameA').value);if(markers.B)markers.B.setPopupContent($('nameB').value);save()};
@@ -102,6 +102,54 @@ if(saved.A&&Number.isFinite(saved.A.lat)&&Number.isFinite(saved.A.lng))setPoint(
     let currentPairId = null;
     let currentPairData = null;
     let pairListener = null;
+    let locationListener = null;
+    let locationWatchId = null;
+    window.entredosRole = null;
+    const locationRef = (pairId) => db.ref('locations/' + pairId);
+    function stopLocationWatch() {
+      if (locationWatchId !== null && navigator.geolocation) navigator.geolocation.clearWatch(locationWatchId);
+      locationWatchId = null;
+    }
+    function refreshLocationSync(pairId, data, user) {
+      const isOwner = !!(user && data && data.ownerUid === user.uid);
+      const isPartner = !!(user && data && data.partnerUid === user.uid);
+      window.entredosRole = isOwner ? 'owner' : (isPartner ? 'partner' : null);
+      const canShare = !!(data && user && (isOwner || isPartner) && data.status === 'active' && data.ownerConsent === true && data.partnerConsent === true && data.partnerUid);
+      if (!canShare) {
+        stopLocationWatch();
+        if (locationListener) locationRef(pairId).off('value', locationListener);
+        locationListener = null;
+        window.entredosPublishLocation = null;
+        return;
+      }
+      if (!locationListener) {
+        locationListener = snap => {
+          const values = snap.val() || {};
+          const otherUid = isOwner ? data.partnerUid : data.ownerUid;
+          const other = values[otherUid];
+          if (other && Number.isFinite(other.lat) && Number.isFinite(other.lng)) {
+            if (typeof window.setPoint === 'function') window.setPoint(isOwner ? 'B' : 'A', L.latLng(other.lat, other.lng));
+          }
+        };
+        locationRef(pairId).on('value', locationListener, error => pairMessage('No se pudieron leer las ubicaciones: ' + (error.message || error.code)));
+      }
+      window.entredosPublishLocation = coords => {
+        const latest = currentPairData;
+        const currentUser = signedInUser();
+        if (!latest || !currentUser || latest.status !== 'active' || latest.ownerConsent !== true || latest.partnerConsent !== true || !(latest.ownerUid === currentUser.uid || latest.partnerUid === currentUser.uid)) {
+          pairMessage('La ubicación no se ha enviado: falta el consentimiento de ambas personas o el vínculo ya está cerrado.');
+          return;
+        }
+        locationRef(pairId).child(currentUser.uid).set({lat: coords.latitude, lng: coords.longitude, updatedAt: Date.now()})
+          .catch(error => pairMessage('No se pudo sincronizar la ubicación: ' + (error.message || error.code)));
+      };
+      if (locationWatchId === null && navigator.geolocation) {
+        locationWatchId = navigator.geolocation.watchPosition(coords => {
+          if (window.entredosPublishLocation) window.entredosPublishLocation(coords.coords);
+          if (typeof window.setPoint === 'function') window.setPoint(isOwner ? 'A' : 'B', L.latLng(coords.coords.latitude, coords.coords.longitude));
+        }, error => pairMessage(error.code === 1 ? 'Safari no tiene permiso para acceder a la ubicación.' : 'No se pudo actualizar la ubicación. Comprueba el permiso de Safari.'), {enableHighAccuracy:true, maximumAge:10000, timeout:20000});
+      }
+    }
     const inviteParams = new URLSearchParams(location.search);
     const invitePairId = inviteParams.get('pareja');
     const shareNotice = document.getElementById('shareNotice');
@@ -143,11 +191,15 @@ if(saved.A&&Number.isFinite(saved.A.lat)&&Number.isFinite(saved.A.lng))setPoint(
       pairListener = snap => {
         if (!snap.exists()) {
           currentPairData = null;
+          stopLocationWatch();
+          if (locationListener) locationRef(pairId).off('value', locationListener);
+          locationListener = null;
           pairMessage('No se encontró esta invitación. Pide a la otra persona que cree un enlace nuevo.');
           return;
         }
         currentPairData = snap.val();
         const user = signedInUser();
+        refreshLocationSync(pairId, currentPairData, user);
         const isOwner = !!(user && currentPairData.ownerUid === user.uid);
         const isPartner = !!(user && currentPairData.partnerUid === user.uid);
         if (currentPairData.status === 'revoked') {
