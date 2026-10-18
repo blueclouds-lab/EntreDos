@@ -220,10 +220,10 @@ if(saved.A&&Number.isFinite(saved.A.lat)&&Number.isFinite(saved.A.lng))setPoint(
         revokePairBtn.hidden = !isOwner;
         const bothConsented = currentPairData.ownerConsent === true && currentPairData.partnerConsent === true && !!currentPairData.partnerUid;
         if (isOwner) {
-          pairMessage(bothConsented ? 'Las dos personas han dado su consentimiento. La invitación está preparada; la sincronización de ubicación aún no se ha activado.' :
+          pairMessage(bothConsented ? 'Las dos personas han dado su consentimiento. La invitación está activa. Si ambas personas permiten el GPS, las ubicaciones se actualizarán en el mapa.' :
             (currentPairData.partnerUid ? 'La otra persona se ha unido. Falta que ambas personas acepten compartir.' : 'Enlace privado creado. Esperando a que la otra persona lo acepte.'));
         } else if (isPartner) {
-          pairMessage(bothConsented ? 'Ambas personas han aceptado. La sincronización de ubicación todavía no está activada.' :
+          pairMessage(bothConsented ? 'Ambas personas han aceptado. Si permites el GPS en Safari, tu ubicación podrá actualizarse en el mapa.' :
             'Te has unido a la invitación. Puedes aceptar o retirar tu consentimiento cuando quieras.');
         } else {
           pairMessage('Invitación pendiente. Pulsa «Aceptar invitación» si reconoces a la persona.');
@@ -330,7 +330,7 @@ if(saved.A&&Number.isFinite(saved.A.lat)&&Number.isFinite(saved.A.lng))setPoint(
           pairMessage('Has retirado tu consentimiento y cerrado este vínculo. Para volver a compartir, será necesaria una invitación nueva.');
         } else {
           await pairRef(currentPairId).child(key).set(true);
-          pairMessage('Has dado tu consentimiento. La ubicación no se transmitirá hasta que ambas personas acepten.');
+          pairMessage('Has dado tu consentimiento. La ubicación solo se transmitirá cuando ambas personas hayan aceptado y el vínculo esté activo.');
         }
       } catch (error) {
         pairMessage('No se pudo guardar el consentimiento: ' + (error.message || error.code) + '. No cambies las reglas de Firebase todavía.');
