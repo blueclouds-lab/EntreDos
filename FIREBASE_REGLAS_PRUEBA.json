@@ -51,7 +51,8 @@
           "$other": {
             ".validate": false
           }
-        }
+        },
+        ".write": "auth != null && !newData.exists() && (auth.uid == root.child('pairs').child($pairId).child('ownerUid').val() || auth.uid == root.child('pairs').child($pairId).child('partnerUid').val()) && (root.child('pairs').child($pairId).child('status').val() == 'pending' || root.child('pairs').child($pairId).child('status').val() == 'active')"
       }
     }
   }
