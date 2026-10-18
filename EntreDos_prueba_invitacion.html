@@ -363,11 +363,11 @@ appContent.classList.toggle('locked', !allowed);
 if (!user) {
   setAuthStatus('No has iniciado sesión. Crea una cuenta o inicia sesión.');
 } else if (anonymous) {
-  setAuthStatus('Acceso anónimo correcto. La vinculación y sincronización entre móviles todavía no están activadas.');
+  setAuthStatus('Acceso anónimo correcto. Si abres una invitación válida, podrás vincularte sin correo ni contraseña.');
 } else if (!verified) {
   setAuthStatus('Sesión iniciada, pero el correo aún no está verificado. Pulsa «Enviar verificación» y revisa tu bandeja de entrada y spam.');
 } else {
-  setAuthStatus('Correo verificado. Puedes probar el mapa en este navegador. La sincronización entre móviles sigue desactivada.');
+  setAuthStatus('Correo verificado. Puedes crear una invitación privada y activar la ubicación compartida cuando ambas personas den su consentimiento.');
 }
   };
     document.getElementById('registerBtn').addEventListener('click', async () => {
