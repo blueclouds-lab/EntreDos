@@ -86,18 +86,14 @@ test('owner verification, single-use claim, consent, location privacy and irreve
   await denied(stranger.ref('locations/p1/owner').get());
   await denied(partner.ref('locations/p1/owner').set({ lat: 0, lng: 0, updatedAt: 4 }));
 
-  // If either person withdraws consent, location access must stop immediately
-  // and the same consent must not be granted again on the active pair.
-  await partner.ref('pairs/p1/partnerConsent').set(false);
-  await denied(partner.ref('locations/p1/partner').get());
-  await denied(partner.ref('pairs/p1/partnerConsent').set(true));
-
-  await owner.ref().update({
+  // Withdrawing consent must atomically revoke the pair and delete both locations.
+  await partner.ref().update({
     'pairs/p1/status': 'revoked',
-    'pairs/p1/ownerConsent': false,
     'pairs/p1/partnerConsent': false,
     'locations/p1': null
   });
+  await denied(partner.ref('locations/p1/partner').get());
+  await denied(partner.ref('pairs/p1/partnerConsent').set(true));
 
   const revoked = (await owner.ref('pairs/p1').get()).val();
   assert.equal(revoked.status, 'revoked');
