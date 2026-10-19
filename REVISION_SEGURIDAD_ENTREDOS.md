@@ -14,7 +14,7 @@ La página `EntreDos_prueba_invitacion.html` escribe en `pairs/{pairId}` y `loca
 - No activar ubicación hasta que ambas cuentas estén vinculadas y ambos consentimientos sean verdaderos.
 - Cada persona solo puede escribir su propia ubicación.
 - Retirar el consentimiento cierra el vínculo, deja `ownerConsent` y `partnerConsent` en `false` y borra las ubicaciones; un vínculo revocado no se reactiva.
-- La acción de revocación de la página de prueba actualiza esos cuatro valores en una sola operación multipath. Las reglas permiten escribir `false` en cada consentimiento mientras el vínculo aún está `pending` o `active`, incluso si uno ya estaba en `false`; el estado `revoked` no permite volver a aceptar ni activar.
+- La acción de revocación de la página de prueba actualiza estado, ambos consentimientos y ubicaciones en una sola operación multipath. Cada persona puede retirar su propio consentimiento; además, la persona propietaria puede poner el consentimiento de la invitación en `false` al revocar. Esa excepción solo permite `false`, nunca conceder consentimiento en nombre de la otra persona. Las reglas siguen sin permitir reactivar un estado `revoked`.
 - No publicar cambios en Firebase hasta pasar las pruebas de permiso y de flujo.
 
 ## Pruebas obligatorias antes de publicar
