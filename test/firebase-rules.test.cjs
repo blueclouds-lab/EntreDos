@@ -126,4 +126,7 @@ test('owner verification, single-use claim, consent, location privacy and irreve
   await denied(partner.ref('pairs/p1/partnerConsent').set(true));
   await denied(secondPartner.ref('pairs/p1/partnerUid').set('second-partner'));
   await denied(stranger.ref('locations/p1/owner').get());
+
+  // The old invitations schema is no longer used and must stay closed.
+  await denied(owner.ref('invitations/legacy').set({ creatorUid: 'owner', status: 'pending' }));
 });
