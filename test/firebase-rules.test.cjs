@@ -133,6 +133,17 @@ test('owner verification, single-use claim, consent, location privacy and irreve
   await denied(secondPartner.ref('pairs/p1/partnerUid').set('second-partner'));
   await denied(stranger.ref('locations/p1/owner').get());
 
+  // Withdrawing consent while the pair is still pending must revoke it permanently too.
+  await seedPair('p3', 'partner');
+  await partner.ref().update({
+    'pairs/p3/status': 'revoked',
+    'pairs/p3/partnerConsent': false,
+    'locations/p3': null
+  });
+  assert.equal((await partner.ref('pairs/p3/status').get()).val(), 'revoked');
+  await denied(partner.ref('pairs/p3/partnerConsent').set(true));
+  await denied(owner.ref('pairs/p3/status').set('active'));
+
   // Root access and the old invitations schema must remain closed.
   await denied(stranger.ref('/').get());
   await denied(owner.ref('/').set({ unexpected: true }));
