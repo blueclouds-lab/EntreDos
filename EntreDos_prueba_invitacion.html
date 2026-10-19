@@ -188,6 +188,11 @@ if(saved.A&&Number.isFinite(saved.A.lat)&&Number.isFinite(saved.A.lng))setPoint(
 
     async function startPairListener(pairId) {
       if (pairListener && currentPairId) pairRef(currentPairId).off('value', pairListener);
+      if (locationListener && currentPairId) locationRef(currentPairId).off('value', locationListener);
+      locationListener = null;
+      stopLocationWatch();
+      window.entredosPublishLocation = null;
+      currentPairData = null;
       currentPairId = pairId;
       pairListener = snap => {
         if (!snap.exists()) {
