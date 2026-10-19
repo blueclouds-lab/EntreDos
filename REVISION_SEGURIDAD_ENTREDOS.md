@@ -34,3 +34,7 @@ La página `EntreDos_prueba_invitacion.html` escribe en `pairs/{pairId}` y `loca
 Las reglas de Realtime Database tienen permisos heredados: cualquier permiso `.write` concedido en un nodo padre también permite escribir en sus descendientes. Por ello, las reglas finales deben revisarse como un conjunto y probarse con operaciones de creación, actualización, transacción y borrado, no solo leyendo las expresiones por separado.
 
 Este archivo es documentación de revisión, no certifica que las reglas hayan pasado esas pruebas. La configuración publicada y la página principal no se modifican con esta rama.
+
+## Pruebas automatizadas
+
+Se ha añadido `test/firebase-rules.test.cjs`, junto con `firebase.json`, `package.json` y el flujo de GitHub Actions `.github/workflows/firebase-rules-tests.yml`. El flujo arranca el emulador de Realtime Database y prueba creación por propietaria verificada, rechazo de propietaria no verificada, reclamación de un solo uso, bloqueo de ubicaciones sin doble consentimiento, escritura por UID, privacidad frente a terceros y revocación irreversible. La revisión sigue pendiente hasta que el flujo termine y se analicen los resultados; añadir pruebas no equivale a que hayan pasado.
