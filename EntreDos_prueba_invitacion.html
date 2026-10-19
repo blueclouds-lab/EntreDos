@@ -291,7 +291,12 @@ if(saved.A&&Number.isFinite(saved.A.lat)&&Number.isFinite(saved.A.lng))setPoint(
     revokePairBtn.addEventListener('click', async () => {
       if (!currentPairId || !window.confirm('¿Quieres revocar esta invitación? La otra persona ya no podrá usar este vínculo.')) return;
       try {
-        await rootRef().update({ ['pairs/' + currentPairId + '/status']: 'revoked', ['locations/' + currentPairId]: null });
+        await rootRef().update({
+          ['pairs/' + currentPairId + '/status']: 'revoked',
+          ['pairs/' + currentPairId + '/ownerConsent']: false,
+          ['pairs/' + currentPairId + '/partnerConsent']: false,
+          ['locations/' + currentPairId]: null
+        });
         pairMessage('Invitación revocada.');
       } catch (error) {
         pairMessage('No se pudo revocar: ' + (error.message || error.code) + '. La base de datos puede seguir cerrada.');
