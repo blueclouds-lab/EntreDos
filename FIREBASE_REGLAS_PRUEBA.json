@@ -54,6 +54,12 @@
         },
         ".write": "auth != null && !newData.exists() && (auth.uid == root.child('pairs').child($pairId).child('ownerUid').val() || auth.uid == root.child('pairs').child($pairId).child('partnerUid').val()) && (root.child('pairs').child($pairId).child('status').val() == 'pending' || root.child('pairs').child($pairId).child('status').val() == 'active')"
       }
+    },
+    "invitations": {
+      "$code": {
+        ".read": "auth != null && (data.child('creatorUid').val() === auth.uid || data.child('partnerUid').val() === auth.uid)",
+        ".write": "auth != null && ((!data.exists() && newData.child('creatorUid').val() === auth.uid && newData.child('status').val() === 'pending' && !newData.child('partnerUid').exists()) || (data.exists() && data.child('status').val() === 'pending' && !data.child('partnerUid').exists() && data.child('creatorUid').val() !== auth.uid && newData.child('creatorUid').val() === data.child('creatorUid').val() && newData.child('partnerUid').val() === auth.uid && newData.child('status').val() === 'accepted' && newData.child('createdAt').val() === data.child('createdAt').val()) || (data.exists() && data.child('creatorUid').val() === auth.uid && newData.child('creatorUid').val() === data.child('creatorUid').val() && newData.child('partnerUid').val() === data.child('partnerUid').val() && newData.child('createdAt').val() === data.child('createdAt').val() && newData.child('status').val() === 'revoked'))"
+      }
     }
   }
 }
