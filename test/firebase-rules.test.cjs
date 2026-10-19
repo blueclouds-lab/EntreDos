@@ -91,7 +91,9 @@ test('owner verification, single-use claim, consent, location privacy and irreve
   assert.equal(revoked.status, 'revoked');
   assert.equal(revoked.ownerConsent, false);
   assert.equal(revoked.partnerConsent, false);
-  assert.equal((await env.withSecurityRulesDisabled(ctx => ctx.database().ref('locations/p1').get())).exists(), false);
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    assert.equal((await ctx.database().ref('locations/p1').get()).exists(), false);
+  });
 
   await denied(owner.ref('pairs/p1/status').set('active'));
   await denied(partner.ref('pairs/p1/partnerConsent').set(true));
