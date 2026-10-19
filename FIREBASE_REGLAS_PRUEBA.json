@@ -24,7 +24,7 @@
           ".validate": "newData.isBoolean()"
         },
         "partnerConsent": {
-          ".write": "auth != null && ((auth.uid == root.child('pairs').child($pairId).child('partnerUid').val() && ((newData.val() == true && data.val() == false && root.child('pairs').child($pairId).child('status').val() == 'pending') || (newData.val() == false && (root.child('pairs').child($pairId).child('status').val() == 'pending' || root.child('pairs').child($pairId).child('status').val() == 'active'))) || (auth.uid == root.child('pairs').child($pairId).child('ownerUid').val() && newData.val() == false && (root.child('pairs').child($pairId).child('status').val() == 'pending' || root.child('pairs').child($pairId).child('status').val() == 'active')))",
+          ".write": "auth != null && ((auth.uid == root.child('pairs').child($pairId).child('partnerUid').val() && ((newData.val() == true && data.val() == false && root.child('pairs').child($pairId).child('status').val() == 'pending') || (newData.val() == false && (root.child('pairs').child($pairId).child('status').val() == 'pending' || root.child('pairs').child($pairId).child('status').val() == 'active'))) ) || (auth.uid == root.child('pairs').child($pairId).child('ownerUid').val() && newData.val() == false && (root.child('pairs').child($pairId).child('status').val() == 'pending' || root.child('pairs').child($pairId).child('status').val() == 'active')))",
           ".validate": "newData.isBoolean()"
         },
         "$other": {
