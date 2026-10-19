@@ -101,6 +101,27 @@ test('owner verification, single-use claim, consent, location privacy and irreve
     assert.equal((await ctx.database().ref('locations/p1').get()).exists(), false);
   });
 
+  
+  // A partner must also be able to close the link with the same atomic
+  // status + own-consent + location-delete update used by the UI.
+  await seedPair('p2', 'partner');
+  await owner.ref('pairs/p2/ownerConsent').set(true);
+  await partner.ref('pairs/p2/partnerConsent').set(true);
+  await owner.ref('pairs/p2/status').set('active');
+  await owner.ref('locations/p2/owner').set({ lat: 40, lng: -3, updatedAt: 5 });
+  await partner.ref().update({
+    'pairs/p2/status': 'revoked',
+    'pairs/p2/partnerConsent': false,
+    'locations/p2': null
+  });
+  assert.equal((await partner.ref('pairs/p2/status').get()).val(), 'revoked');
+  assert.equal((await partner.ref('pairs/p2/partnerConsent').get()).val(), false);
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    assert.equal((await ctx.database().ref('locations/p2').get()).exists(), false);
+  });
+  await denied(owner.ref('pairs/p2/status').set('active'));
+  await denied(partner.ref('pairs/p2/partnerConsent').set(true));
+
   await denied(owner.ref('pairs/p1/status').set('active'));
   await denied(partner.ref('pairs/p1/partnerConsent').set(true));
   await denied(secondPartner.ref('pairs/p1/partnerUid').set('second-partner'));
