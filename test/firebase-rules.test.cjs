@@ -131,6 +131,26 @@ test('owner verification, single-use claim, consent, location privacy and irreve
   await denied(secondPartner.ref('pairs/p1/partnerUid').set('second-partner'));
   await denied(stranger.ref('locations/p1/owner').get());
 
+  // The owner must also be able to revoke an already active pair atomically.
+  await seedPair('p4', 'partner');
+  await owner.ref('pairs/p4/ownerConsent').set(true);
+  await partner.ref('pairs/p4/partnerConsent').set(true);
+  await owner.ref('pairs/p4/status').set('active');
+  await owner.ref('locations/p4/owner').set({ lat: 40, lng: -3, updatedAt: 6 });
+  await partner.ref('locations/p4/partner').set({ lat: 41, lng: -4, updatedAt: 7 });
+  await owner.ref().update({
+    'pairs/p4/status': 'revoked',
+    'pairs/p4/ownerConsent': false,
+    'pairs/p4/partnerConsent': false,
+    'locations/p4': null
+  });
+  assert.equal((await owner.ref('pairs/p4/status').get()).val(), 'revoked');
+  await denied(partner.ref('pairs/p4/partnerConsent').set(true));
+  await denied(owner.ref('pairs/p4/status').set('active'));
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    assert.equal((await ctx.database().ref('locations/p4').get()).exists(), false);
+  });
+
   // Withdrawing consent while the pair is still pending must revoke it permanently too.
   await seedPair('p3', 'partner');
   await partner.ref().update({
