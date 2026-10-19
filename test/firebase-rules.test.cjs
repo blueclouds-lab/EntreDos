@@ -97,7 +97,9 @@ test('owner verification, single-use claim, consent, location privacy and irreve
 
   const revoked = (await owner.ref('pairs/p1').get()).val();
   assert.equal(revoked.status, 'revoked');
-  assert.equal(revoked.ownerConsent, false);
+  // The owner's consent record is immutable to the partner; revoked status
+  // permanently disables sharing even if the other person's prior consent remains recorded.
+  assert.equal(revoked.ownerConsent, true);
   assert.equal(revoked.partnerConsent, false);
   await env.withSecurityRulesDisabled(async (ctx) => {
     assert.equal((await ctx.database().ref('locations/p1').get()).exists(), false);
