@@ -18,7 +18,7 @@ after(async () => {
   if (env) await env.cleanup();
 });
 
-const denied = (promise) => assert.rejects(promise, /PERMISSION_DENIED|permission_denied/i);
+const denied = (promise) => assert.rejects(promise, /PERMISSION_DENIED|permission_denied|permission denied/i);
 
 async function seedPair(pairId, partnerUid) {
   await env.withSecurityRulesDisabled(async (ctx) => {
