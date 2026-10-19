@@ -72,6 +72,8 @@ test('owner verification, single-use claim, consent, location privacy and irreve
 
   await owner.ref('pairs/p1/ownerConsent').set(true);
   await denied(owner.ref('locations/p1/owner').set({ lat: 40, lng: -3, updatedAt: 1 }));
+  // Activation must be denied until the partner has also consented.
+  await denied(owner.ref('pairs/p1/status').set('active'));
   await partner.ref('pairs/p1/partnerConsent').set(true);
   await owner.ref('pairs/p1/status').set('active');
 
@@ -127,6 +129,8 @@ test('owner verification, single-use claim, consent, location privacy and irreve
   await denied(secondPartner.ref('pairs/p1/partnerUid').set('second-partner'));
   await denied(stranger.ref('locations/p1/owner').get());
 
-  // The old invitations schema is no longer used and must stay closed.
+  // Root access and the old invitations schema must remain closed.
+  await denied(stranger.ref('/').get());
+  await denied(owner.ref('/').set({ unexpected: true }));
   await denied(owner.ref('invitations/legacy').set({ creatorUid: 'owner', status: 'pending' }));
 });
