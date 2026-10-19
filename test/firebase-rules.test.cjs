@@ -79,6 +79,10 @@ test('owner verification, single-use claim, consent, location privacy and irreve
 
   await owner.ref('locations/p1/owner').set({ lat: 40, lng: -3, updatedAt: 2 });
   await partner.ref('locations/p1/partner').set({ lat: 41, lng: -4, updatedAt: 3 });
+  await denied(owner.ref('locations/p1/owner').set({ lat: 91, lng: -3, updatedAt: 4 }));
+  await denied(partner.ref('locations/p1/partner').set({ lat: 41, lng: -181, updatedAt: 4 }));
+  await denied(owner.ref('locations/p1/owner').set({ lat: 40, lng: -3, updatedAt: 4, secret: 'unexpected' }));
+  await denied(owner.ref('pairs/p1/partnerUid').set('owner'));
   await denied(stranger.ref('locations/p1/owner').get());
   await denied(partner.ref('locations/p1/owner').set({ lat: 0, lng: 0, updatedAt: 4 }));
 
