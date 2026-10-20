@@ -41,7 +41,7 @@
 <section class="card" id="sharePanel" hidden>
 <strong id="shareTitle">Invitar a mi persona</strong>
 <p class="hint" id="shareIntro">Prepara una invitación para que la otra persona pueda abrirla en su iPhone.</p>
-<div id="inviteActions"><button class="btn primary" id="createPairBtn">Crear enlace privado</button><button class="btn light" id="shareInvite" disabled>Compartir enlace</button><button class="btn light" id="revokePairBtn" hidden>Revocar invitación</button><button class="btn light" id="closeShare">Cerrar</button></div>
+<div id="inviteActions"><button class="btn primary" id="createPairBtn">Crear enlace privado</button><button class="btn light" id="shareInvite" disabled>Compartir enlace</button><button class="btn primary" id="ownerConsentBtn" hidden>Acepto compartir mi ubicación</button><button class="btn light" id="revokePairBtn" hidden>Revocar invitación</button><button class="btn light" id="closeShare">Cerrar</button></div>
 <div id="pairActions" hidden><p class="hint">Has recibido una invitación privada. Al aceptarla, la persona que creó el enlace quedará vinculada contigo. La ubicación no se compartirá hasta que ambas personas den su consentimiento.</p><button class="btn primary" id="acceptPairBtn">Aceptar invitación</button><button class="btn light" id="consentPairBtn" hidden>Acepto compartir mi ubicación</button><button class="btn light" id="pairCloseBtn">Cerrar</button></div>
 <div id="guestActions" hidden><p class="hint">Esta pantalla de demostración permite obtener la ubicación con permiso del navegador. No la uses para compartir ubicación real entre teléfonos; utiliza únicamente una invitación de prueba cuando confirmemos que Firebase está configurado de forma segura.</p><button class="btn primary" id="guestLocate">Compartir mi ubicación</button><button class="btn light" id="guestClose">Volver al mapa</button></div>
 <div class="hint" id="shareNotice" style="margin-top:10px"></div>
@@ -160,6 +160,7 @@ if(saved.A&&Number.isFinite(saved.A.lat)&&Number.isFinite(saved.A.lng))setPoint(
     const revokePairBtn = document.getElementById('revokePairBtn');
     const acceptPairBtn = document.getElementById('acceptPairBtn');
     const consentPairBtn = document.getElementById('consentPairBtn');
+    const ownerConsentBtn = document.getElementById('ownerConsentBtn');
     const pairCloseBtn = document.getElementById('pairCloseBtn');
     const showSharePanel = () => { document.getElementById('sharePanel').hidden = false; };
     const pairMessage = (message) => { shareNotice.textContent = message; };
@@ -217,6 +218,8 @@ if(saved.A&&Number.isFinite(saved.A.lat)&&Number.isFinite(saved.A.lng))setPoint(
         acceptPairBtn.hidden = isOwner || isPartner || currentPairData.status !== 'pending' || !!currentPairData.partnerUid;
         consentPairBtn.hidden = !(isOwner || isPartner);
         consentPairBtn.textContent = (isOwner ? currentPairData.ownerConsent : currentPairData.partnerConsent) ? 'Retirar mi consentimiento' : 'Acepto compartir mi ubicación';
+        ownerConsentBtn.hidden = !isOwner || currentPairData.status === 'revoked';
+        ownerConsentBtn.textContent = currentPairData.ownerConsent ? 'Retirar mi consentimiento y cerrar vínculo' : 'Acepto compartir mi ubicación';
         revokePairBtn.hidden = !isOwner;
         const bothConsented = currentPairData.ownerConsent === true && currentPairData.partnerConsent === true && !!currentPairData.partnerUid;
         if (isOwner) {
@@ -269,6 +272,7 @@ if(saved.A&&Number.isFinite(saved.A.lat)&&Number.isFinite(saved.A.lng))setPoint(
       }
     }
 
+    ownerConsentBtn.addEventListener('click', () => consentPairBtn.click());
     createPairBtn.addEventListener('click', prepareInviteLink);
     shareInviteBtn.onclick = async () => {
       const url = window.entredosInviteUrl;
